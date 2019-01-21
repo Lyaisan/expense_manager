@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">ExpenseManager</string>
+    <string name="permission_toast_error">Some permissions are not granted</string>
+    <string name="permission_error">Requested permissions are needed for an application to work properly. Please check again and grant all requested permissions.</string>
+    <string name="permission_check_again_message">Please, check again.</string>
+    <string name="ok">Ok</string>
+    <string name="results">The results:</string>
+    <string name="error_occurred">An error occurred:</string>
+    <string name="reset">Reset</string>
+    <string name="send">SEND</string>
+</resources>
