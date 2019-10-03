@@ -1,18 +1,15 @@
 package com.lalmeeva.expense.screens.main
 
 import android.Manifest
-import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.os.Bundle
-import android.support.v7.app.AlertDialog
 import android.view.*
 import android.view.animation.AnimationUtils
-import com.google.android.gms.vision.CameraSource
-import com.google.android.gms.vision.Detector
-import com.google.android.gms.vision.barcode.Barcode
-import com.google.android.gms.vision.barcode.BarcodeDetector
+import androidx.camera.core.*
 import com.lalmeeva.expense.R
 import com.lalmeeva.expense.base.BaseApp
 import com.lalmeeva.expense.base.view.BaseFragment
+import com.lalmeeva.expense.utils.QrCodeAnalyzer
 import kotlinx.android.synthetic.main.fragment_camera.*
 import javax.inject.Inject
 
@@ -24,8 +21,6 @@ class CameraFragment : BaseFragment<MainView, CameraView, CameraPresenter>(), Ca
     override lateinit var presenter: CameraPresenter
 
     private var detectedCount: Int = 0
-    private var barcodeDetector: BarcodeDetector? = null
-    private var cameraSource: CameraSource? = null
 
     override fun inject() {
         BaseApp.appComponent.inject(this)
@@ -36,7 +31,11 @@ class CameraFragment : BaseFragment<MainView, CameraView, CameraPresenter>(), Ca
         setHasOptionsMenu(true)
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
         return inflater.inflate(R.layout.fragment_camera, container, false)
     }
 
@@ -48,21 +47,14 @@ class CameraFragment : BaseFragment<MainView, CameraView, CameraPresenter>(), Ca
         }
     }
 
-    override fun onPause() {
-        super.onPause()
-        cameraSource?.stop()
-        cameraSource?.release()
-        barcodeDetector?.release()
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu?, inflater: MenuInflater?) {
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         super.onCreateOptionsMenu(menu, inflater)
-        menu?.clear()
-        inflater?.inflate(R.menu.reset_menu, menu)
+        menu.clear()
+        inflater.inflate(R.menu.reset_menu, menu)
     }
 
-    override fun onOptionsItemSelected(item: MenuItem?): Boolean {
-        when (item?.itemId) {
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
             R.id.reset -> {
                 presenter.clearBarcodes()
                 return true
@@ -79,46 +71,40 @@ class CameraFragment : BaseFragment<MainView, CameraView, CameraPresenter>(), Ca
             alertDialogBuilder.setCancelable(false)
             alertDialogBuilder.setMessage(R.string.permission_error)
             //set empty OnClickListener to prevent auto dismissing the dialog by clicking a button
-            alertDialogBuilder.setPositiveButton(R.string.permission_check_again_message) { _, _ -> requestPermissions(permissions) }
+            alertDialogBuilder.setPositiveButton(R.string.permission_check_again_message) { _, _ ->
+                requestPermissions(
+                    permissions
+                )
+            }
             dialog = alertDialogBuilder.show()
         }
     }
 
     override fun onPermissionGranted() {
-        startCameraSource()
+        cameraView.post { startCamera() }
     }
 
-    @SuppressLint("MissingPermission")
-    private fun startCameraSource() {
-        barcodeDetector = BarcodeDetector.Builder(context).setBarcodeFormats(Barcode.QR_CODE).build()
-        cameraSource = CameraSource.Builder(context, barcodeDetector).setAutoFocusEnabled(true).build()
+    private fun startCamera() {
+        val previewConfig = PreviewConfig.Builder()
+            // We want to show input from back camera of the device
+            .setLensFacing(CameraX.LensFacing.BACK)
+            .build()
 
-        if (cameraView.holder.surface.isValid) {
-            cameraSource?.start(cameraView.holder)
+        val preview = Preview(previewConfig)
+
+        preview.setOnPreviewOutputUpdateListener { previewOutput ->
+            cameraView.surfaceTexture = previewOutput.surfaceTexture
         }
 
-        barcodeDetector?.setProcessor(object : Detector.Processor<Barcode> {
-            override fun release() {
+        val imageAnalysisConfig = ImageAnalysisConfig.Builder().build()
+        val imageAnalysis = ImageAnalysis(imageAnalysisConfig)
 
-            }
+        val qrAnalyzer = QrCodeAnalyzer { qrCodes ->
+            presenter.receiveDetections(qrCodes)
+        }
+        imageAnalysis.analyzer = qrAnalyzer
 
-            override fun receiveDetections(detections: Detector.Detections<Barcode>?) {
-                presenter.receiveDetections(detections?.detectedItems)
-            }
-        })
-
-        cameraView.holder.addCallback(object : SurfaceHolder.Callback {
-            override fun surfaceChanged(holder: SurfaceHolder?, format: Int, width: Int, height: Int) {
-            }
-
-            override fun surfaceDestroyed(holder: SurfaceHolder?) {
-                cameraSource?.stop()
-            }
-
-            override fun surfaceCreated(holder: SurfaceHolder?) {
-                cameraSource?.start(cameraView.holder)
-            }
-        })
+        CameraX.bindToLifecycle( this, preview, imageAnalysis)
     }
 
     /**

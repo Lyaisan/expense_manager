@@ -1,8 +1,7 @@
 package com.lalmeeva.expense.screens.main
 
-import android.support.v4.util.ArraySet
-import android.util.SparseArray
-import com.google.android.gms.vision.barcode.Barcode
+import androidx.collection.ArraySet
+import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcode
 import com.lalmeeva.expense.base.view.BasePresenter
 import com.lalmeeva.expense.data.source.BillRepository
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -10,17 +9,16 @@ import io.reactivex.schedulers.Schedulers
 import timber.log.Timber
 import javax.inject.Inject
 
-class CameraPresenter @Inject constructor(private val billRepository: BillRepository): BasePresenter<CameraView>() {
+class CameraPresenter @Inject constructor(private val billRepository: BillRepository) :
+    BasePresenter<CameraView>() {
     private val barcodesDetected: ArraySet<String> = ArraySet()
 
-    fun receiveDetections(detectedItems: SparseArray<Barcode>?) {
-        detectedItems?.let {
-            if (it.size() != 0) {
-                val displayValue = it.valueAt(0).displayValue
-                synchronized(barcodesDetected) {
-                    barcodesDetected.add(displayValue)
-                    view?.setBarcodesCount(barcodesDetected.size)
-                }
+    fun receiveDetections(detectedItems: List<FirebaseVisionBarcode>) {
+        if (detectedItems.isNotEmpty()) {
+            val displayValue = detectedItems[0].rawValue
+            synchronized(barcodesDetected) {
+                barcodesDetected.add(displayValue)
+                view?.setBarcodesCount(barcodesDetected.size)
             }
         }
     }

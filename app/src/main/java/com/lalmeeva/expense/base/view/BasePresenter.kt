@@ -1,6 +1,6 @@
 package com.lalmeeva.expense.base.view
 
-import android.support.annotation.CallSuper
+import androidx.annotation.CallSuper
 import io.reactivex.disposables.CompositeDisposable
 
 abstract class BasePresenter<T> {

@@ -1,8 +1,8 @@
 package com.lalmeeva.expense.base.view
 
 import android.content.pm.PackageManager
-import android.support.v4.app.ActivityCompat
-import android.support.v4.app.Fragment
+import androidx.core.app.ActivityCompat
+import androidx.fragment.app.Fragment
 
 abstract class PermissionsCheckFragment: Fragment() {
 
