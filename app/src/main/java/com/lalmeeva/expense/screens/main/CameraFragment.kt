@@ -1,11 +1,13 @@
 package com.lalmeeva.expense.screens.main
 
 import android.Manifest
-import android.app.AlertDialog
+import android.graphics.PorterDuff
 import android.os.Bundle
+import android.os.Handler
 import android.view.*
-import android.view.animation.AnimationUtils
+import androidx.appcompat.app.AlertDialog
 import androidx.camera.core.*
+import androidx.core.content.ContextCompat
 import com.lalmeeva.expense.R
 import com.lalmeeva.expense.base.BaseApp
 import com.lalmeeva.expense.base.view.BaseFragment
@@ -114,9 +116,12 @@ class CameraFragment : BaseFragment<MainView, CameraView, CameraPresenter>(), Ca
      * @return returns the same view with animation properties
      */
     private fun makeMeBlink(view: View) {
-
-        val startAnimation = AnimationUtils.loadAnimation(context, R.anim.blinking_animation)
-        view.startAnimation(startAnimation)
+//        val startAnimation = AnimationUtils.loadAnimation(context, R.anim.blinking_animation)
+//        view.startAnimation(startAnimation)
+        context?.let {
+            qrFrame.setColorFilter(ContextCompat.getColor(it, R.color.dove_green), PorterDuff.Mode.SRC_ATOP)
+            Handler().postDelayed({ qrFrame.setColorFilter(ContextCompat.getColor(it, R.color.dove_gray), PorterDuff.Mode.SRC_ATOP) }, 500)
+        }
     }
 
     override fun setBarcodesCount(count: Int) {

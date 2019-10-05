@@ -5,4 +5,5 @@
     <dimen name="my_rectangle_margin">75dp</dimen>
     <dimen name="button_text_size">20sp</dimen>
     <dimen name="button_text_size_small">14sp</dimen>
+    <dimen name="qr_size">270dp</dimen>
 </resources>

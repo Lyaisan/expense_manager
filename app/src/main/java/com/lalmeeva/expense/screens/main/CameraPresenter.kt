@@ -4,8 +4,7 @@ import androidx.collection.ArraySet
 import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcode
 import com.lalmeeva.expense.base.view.BasePresenter
 import com.lalmeeva.expense.data.source.BillRepository
-import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.schedulers.Schedulers
+import com.lalmeeva.expense.utils.RxUtils
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -26,15 +25,13 @@ class CameraPresenter @Inject constructor(private val billRepository: BillReposi
     fun parseBills() {
         if (!barcodesDetected.isEmpty()) {
             disposable.add(billRepository.parseBills(ArraySet<String>(barcodesDetected))
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .doOnSubscribe { view?.showProgress() }
-                .doOnError { view?.showError(it?.message) }
-                .doFinally {
-                    barcodesDetected.clear()
-                    view?.hideProgress()
-                }
-                .subscribe({ view?.showResult(it?.toString()) }, { Timber.e(it) })
+                .compose(RxUtils.applySchedulersSingle())
+                .compose(RxUtils.applyProgressSingle(view))
+                .doFinally { barcodesDetected.clear() }
+                .subscribe({ view?.showResult(it?.toString()) }, {
+                    view?.showError(it?.message)
+                    Timber.e(it)
+                })
             )
         } else {
             view?.showError("Nothing to send!")
