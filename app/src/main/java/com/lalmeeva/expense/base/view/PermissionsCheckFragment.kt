@@ -12,8 +12,8 @@ abstract class PermissionsCheckFragment: Fragment() {
 
     protected abstract var permissions: Array<String>
 
-    override fun onResume() {
-        super.onResume()
+    override fun onStart() {
+        super.onStart()
         handleRequest()
     }
 
@@ -24,7 +24,7 @@ abstract class PermissionsCheckFragment: Fragment() {
         }
     }
 
-    private fun hasPermissions(permissions: Array<String>): Boolean {
+    private fun hasPermissions(permissions: Array<out String>): Boolean {
         for (permission in permissions) {
             if (!hasPermission(permission)) {
                 return false
@@ -42,6 +42,16 @@ abstract class PermissionsCheckFragment: Fragment() {
 
     open fun requestPermissions(permissions: Array<String>) {
         requestPermissions(permissions, PERMISSION_REQ_CODE)
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        when (requestCode) {
+            PERMISSION_REQ_CODE -> {
+                if (hasPermissions(permissions)) onPermissionGranted()
+                else onPermissionDenied()
+            }
+        }
     }
 
     protected abstract fun onPermissionDenied()

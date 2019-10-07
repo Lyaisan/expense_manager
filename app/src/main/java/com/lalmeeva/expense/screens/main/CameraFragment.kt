@@ -8,6 +8,7 @@ import android.view.*
 import androidx.appcompat.app.AlertDialog
 import androidx.camera.core.*
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.LifecycleOwner
 import com.lalmeeva.expense.R
 import com.lalmeeva.expense.base.BaseApp
 import com.lalmeeva.expense.base.view.BaseFragment
@@ -15,12 +16,14 @@ import com.lalmeeva.expense.utils.QrCodeAnalyzer
 import kotlinx.android.synthetic.main.fragment_camera.*
 import javax.inject.Inject
 
-class CameraFragment : BaseFragment<MainView, CameraView, CameraPresenter>(), CameraView {
+class CameraFragment : BaseFragment<MainView, CameraView, CameraPresenter>(), CameraView, LifecycleOwner {
 
     override var permissions: Array<String> = arrayOf(Manifest.permission.CAMERA)
 
     @Inject
     override lateinit var presenter: CameraPresenter
+
+    private var preview: Preview? = null
 
     private var detectedCount: Int = 0
 
@@ -31,6 +34,12 @@ class CameraFragment : BaseFragment<MainView, CameraView, CameraPresenter>(), Ca
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setHasOptionsMenu(true)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        preview?.removePreviewOutputListener()
+        CameraX.unbindAll()
     }
 
     override fun onCreateView(
@@ -83,7 +92,7 @@ class CameraFragment : BaseFragment<MainView, CameraView, CameraPresenter>(), Ca
     }
 
     override fun onPermissionGranted() {
-        cameraView.post { startCamera() }
+        startCamera()
     }
 
     private fun startCamera() {
@@ -92,9 +101,15 @@ class CameraFragment : BaseFragment<MainView, CameraView, CameraPresenter>(), Ca
             .setLensFacing(CameraX.LensFacing.BACK)
             .build()
 
-        val preview = Preview(previewConfig)
+        preview = Preview(previewConfig)
 
-        preview.setOnPreviewOutputUpdateListener { previewOutput ->
+        preview?.setOnPreviewOutputUpdateListener { previewOutput ->
+
+            // To update the SurfaceTexture, we have to remove it and re-add it
+            val parent = cameraView.parent as ViewGroup
+            parent.removeView(cameraView)
+            parent.addView(cameraView, 0)
+
             cameraView.surfaceTexture = previewOutput.surfaceTexture
         }
 
@@ -106,7 +121,7 @@ class CameraFragment : BaseFragment<MainView, CameraView, CameraPresenter>(), Ca
         }
         imageAnalysis.analyzer = qrAnalyzer
 
-        CameraX.bindToLifecycle( this, preview, imageAnalysis)
+        CameraX.bindToLifecycle( this as LifecycleOwner, preview, imageAnalysis)
     }
 
     /**
@@ -116,8 +131,6 @@ class CameraFragment : BaseFragment<MainView, CameraView, CameraPresenter>(), Ca
      * @return returns the same view with animation properties
      */
     private fun makeMeBlink(view: View) {
-//        val startAnimation = AnimationUtils.loadAnimation(context, R.anim.blinking_animation)
-//        view.startAnimation(startAnimation)
         context?.let {
             qrFrame.setColorFilter(ContextCompat.getColor(it, R.color.dove_green), PorterDuff.Mode.SRC_ATOP)
             Handler().postDelayed({ qrFrame.setColorFilter(ContextCompat.getColor(it, R.color.dove_gray), PorterDuff.Mode.SRC_ATOP) }, 500)
