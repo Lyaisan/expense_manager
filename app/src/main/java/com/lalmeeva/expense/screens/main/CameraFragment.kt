@@ -1,9 +1,13 @@
 package com.lalmeeva.expense.screens.main
 
 import android.Manifest
+import android.graphics.Matrix
 import android.graphics.PorterDuff
 import android.os.Bundle
 import android.os.Handler
+import android.os.HandlerThread
+import android.util.DisplayMetrics
+import android.util.Rational
 import android.view.*
 import androidx.appcompat.app.AlertDialog
 import androidx.camera.core.*
@@ -34,12 +38,6 @@ class CameraFragment : BaseFragment<MainView, CameraView, CameraPresenter>(), Ca
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setHasOptionsMenu(true)
-    }
-
-    override fun onStop() {
-        super.onStop()
-        preview?.removePreviewOutputListener()
-        CameraX.unbindAll()
     }
 
     override fun onCreateView(
@@ -92,14 +90,20 @@ class CameraFragment : BaseFragment<MainView, CameraView, CameraPresenter>(), Ca
     }
 
     override fun onPermissionGranted() {
-        startCamera()
+        cameraView.post { startCamera() }
     }
 
     private fun startCamera() {
-        val previewConfig = PreviewConfig.Builder()
-            // We want to show input from back camera of the device
-            .setLensFacing(CameraX.LensFacing.BACK)
-            .build()
+        val displayMetrics = DisplayMetrics()
+        activity?.windowManager?.defaultDisplay?.getMetrics(displayMetrics)
+        val height = displayMetrics.heightPixels
+        val width = displayMetrics.widthPixels
+        val screenAspectRatio = Rational(width, height)
+
+        val previewConfig = PreviewConfig.Builder().apply {
+            setTargetAspectRatio(screenAspectRatio)
+
+        }.build()
 
         preview = Preview(previewConfig)
 
@@ -111,9 +115,22 @@ class CameraFragment : BaseFragment<MainView, CameraView, CameraPresenter>(), Ca
             parent.addView(cameraView, 0)
 
             cameraView.surfaceTexture = previewOutput.surfaceTexture
+            updateTransform()
         }
 
-        val imageAnalysisConfig = ImageAnalysisConfig.Builder().build()
+        val imageAnalysisConfig = ImageAnalysisConfig.Builder().apply {
+            // Use a worker thread for image analysis to prevent glitches
+            val analyzerThread = HandlerThread(
+                "ImageAnalysis"
+            ).apply { start() }
+            setCallbackHandler(Handler(analyzerThread.looper))
+            // In our analysis, we care more about the latest image than
+            // analyzing *every* image
+            setImageReaderMode(
+                ImageAnalysis.ImageReaderMode.ACQUIRE_LATEST_IMAGE
+            )
+        }.build()
+
         val imageAnalysis = ImageAnalysis(imageAnalysisConfig)
 
         val qrAnalyzer = QrCodeAnalyzer { qrCodes ->
@@ -122,6 +139,28 @@ class CameraFragment : BaseFragment<MainView, CameraView, CameraPresenter>(), Ca
         imageAnalysis.analyzer = qrAnalyzer
 
         CameraX.bindToLifecycle( this as LifecycleOwner, preview, imageAnalysis)
+    }
+
+    private fun updateTransform() {
+        if (cameraView.display == null) return
+        val matrix = Matrix()
+
+        // Compute the center of the view finder
+        val centerX = cameraView.width / 2f
+        val centerY = cameraView.height / 2f
+
+        // Correct preview output to account for display rotation
+        val rotationDegrees = when (cameraView.display.rotation) {
+            Surface.ROTATION_0 -> 0
+            Surface.ROTATION_90 -> 90
+            Surface.ROTATION_180 -> 180
+            Surface.ROTATION_270 -> 270
+            else -> return
+        }
+        matrix.postRotate(-rotationDegrees.toFloat(), centerX, centerY)
+
+        // Finally, apply transformations to our TextureView
+        cameraView.setTransform(matrix)
     }
 
     /**

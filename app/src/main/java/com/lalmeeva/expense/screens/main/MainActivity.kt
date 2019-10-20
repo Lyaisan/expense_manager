@@ -2,6 +2,7 @@ package com.lalmeeva.expense.screens.main
 
 import android.os.Bundle
 import android.view.View
+import android.view.WindowManager
 import androidx.navigation.findNavController
 import androidx.navigation.ui.NavigationUI
 import com.lalmeeva.expense.R
@@ -14,6 +15,7 @@ class MainActivity : BaseNavigationActivity(), MainView {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         init()
     }
 

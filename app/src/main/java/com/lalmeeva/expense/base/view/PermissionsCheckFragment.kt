@@ -1,6 +1,8 @@
 package com.lalmeeva.expense.base.view
 
 import android.content.pm.PackageManager
+import android.os.Bundle
+import android.view.View
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
 
@@ -12,8 +14,8 @@ abstract class PermissionsCheckFragment: Fragment() {
 
     protected abstract var permissions: Array<String>
 
-    override fun onStart() {
-        super.onStart()
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
         handleRequest()
     }
 
