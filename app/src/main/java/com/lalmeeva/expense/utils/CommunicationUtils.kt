@@ -13,7 +13,7 @@ class CommunicationUtils {
         /** Connection Timeout default, milliseconds  */
         const val CONNECTION_TIMEOUT = 20000   // 20 seconds
         /** Default Server Url  */
-        const val SERVER_URL = "http://enzeddpc"
+        const val SERVER_URL = "http://192.168.0.2"
         /** Default Server Port  */
         const val SERVER_PORT = 8000
 
